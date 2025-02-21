@@ -31,7 +31,7 @@ def get_warning_message(probability):
         return "☠️ This call is highly suspicious! Disconnect immediately."
     elif probability >= 0.75:
         return "🚨 Strong scam indicators detected! Be cautious."
-    elif probability >= 0.55:
+    elif probability >= 0.60:
         return "⚠️ Some scam-like patterns detected."
     elif probability >= 0.50:
         return "🚧 Slightly below scam threshold, verify details."
@@ -69,7 +69,7 @@ def predict_audio():
             else:
                 text_vectorized = vectorizer.transform([processed_text])
                 probability = model.predict_proba(text_vectorized)[0][1]
-                prediction = "SCAM" if probability >= 0.55 else "NOT SCAM"
+                prediction = "SCAM" if probability >= 0.60 else "NOT SCAM"
                 message = get_warning_message(probability)
                 results[speaker] = {"prediction": prediction, "confidence": round(probability, 2), "message": message}
                 if prediction == "SCAM":
