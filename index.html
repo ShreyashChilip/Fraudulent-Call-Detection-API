@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Audio Scam Detection</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 50px;
+        }
+        .container {
+            max-width: 600px;
+            margin: 0 auto;
+        }
+        .upload-box {
+            border: 2px dashed #ccc;
+            padding: 20px;
+            text-align: center;
+            cursor: pointer;
+        }
+        .upload-box:hover {
+            border-color: #000;
+        }
+        .result {
+            margin-top: 20px;
+            padding: 20px;
+            background-color: #f9f9f9;
+            border: 1px solid #ddd;
+        }
+        .result h3 {
+            margin-top: 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Audio Scam Detection</h1>
+        <div class="upload-box" id="uploadBox">
+            <p>Click or drag an audio file to upload</p>
+            <input type="file" id="audioFile" accept="audio/*" style="display:none;">
+        </div>
+        <div class="result" id="result" style="display:none;">
+            <h3>Result:</h3>
+            <p><strong>Final Prediction:</strong> <span id="finalPrediction"></span></p>
+            <p><strong>Final Confidence:</strong> <span id="finalConfidence"></span></p>
+            <p><strong>Speaker Details:</strong></p>
+            <pre id="speakerDetails"></pre>
+        </div>
+    </div>
+
+    <script>
+        // Dynamically set the API endpoint URL
+        const apiUrl = 'https://scam-detection-api.onrender.com/predict-audio'; // Use the same origin as the HTML file
+
+        document.getElementById('uploadBox').addEventListener('click', function() {
+            document.getElementById('audioFile').click();
+        });
+
+        document.getElementById('audioFile').addEventListener('change', function(event) {
+            const file = event.target.files[0];
+            if (file) {
+                uploadAudio(file);
+            }
+        });
+
+        function uploadAudio(file) {
+            const formData = new FormData();
+            formData.append('audio', file);
+
+            fetch(apiUrl, {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => response.json())
+            .then(data => {
+                document.getElementById('finalPrediction').textContent = data.final_prediction;
+                document.getElementById('finalConfidence').textContent = data.final_confidence;
+                document.getElementById('speakerDetails').textContent = JSON.stringify(data.speaker_details, null, 2);
+                document.getElementById('result').style.display = 'block';
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('An error occurred while processing the audio file.');
+            });
+        }
+    </script>
+</body>
+</html>
