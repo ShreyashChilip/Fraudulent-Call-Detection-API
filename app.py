@@ -1,9 +1,13 @@
-from flask import Flask, request, jsonify
+import os
 import joblib
 import re
 import string
+import assemblyai as aai
+from flask import Flask, request, jsonify
 
 app = Flask(__name__)
+
+aai.settings.api_key = "afc345dcecac49d3b711cd1a9b59757e"
 
 # Load ML model and vectorizer
 model = joblib.load("models/logistic_regression_model_new.pkl")
@@ -13,7 +17,6 @@ def preprocess_text(text):
     """Preprocess text consistently with training data."""
     if not isinstance(text, str):
         return ""
-    
     text = text.lower()
     text = text.translate(str.maketrans("", "", string.punctuation))
     text = re.sub(r'\d+', '', text)
@@ -33,29 +36,52 @@ def get_warning_message(probability):
     else:
         return "✅ No scam detected, but stay cautious."
 
-@app.route('/predict', methods=['POST'])
-def predict():
-    """API endpoint to predict scam probability."""
+@app.route('/predict-audio', methods=['POST'])
+def predict_audio():
+    """API endpoint to predict scam probability from an audio file."""
     try:
-        data = request.json
-        text = data.get("text", "")
+        if 'audio' not in request.files:
+            return jsonify({"error": "No audio file provided"}), 400
 
-        processed_text = preprocess_text(text)
-        if not processed_text:
-            return jsonify({"error": "Invalid or empty text"}), 400
+        audio_file = request.files['audio']
+        file_path = "temp_audio.wav"
+        audio_file.save(file_path)
 
-        # Vectorize and predict
-        text_vectorized = vectorizer.transform([processed_text])
-        probability = model.predict_proba(text_vectorized)[0][1]
-        prediction = "SCAM" if probability >= 0.6 else "NOT SCAM"
-        message = get_warning_message(probability)
+        config = aai.TranscriptionConfig(speaker_labels=True)
+        transcript = aai.Transcriber().transcribe(file_path, config)
+
+        speaker_texts = {}
+        for utterance in transcript.utterances:
+            speaker = f"Speaker {utterance.speaker}"
+            text = utterance.text.strip()
+            speaker_texts.setdefault(speaker, []).append(text)
+
+        speaker_text_strings = {speaker: ". ".join(texts) + "." for speaker, texts in speaker_texts.items()}
+
+        scam_confidences = []
+        results = {}
+        for speaker, text in speaker_text_strings.items():
+            processed_text = preprocess_text(text)
+            if not processed_text:
+                results[speaker] = {"prediction": "NOT SCAM", "confidence": 0.0, "message": "No valid text"}
+            else:
+                text_vectorized = vectorizer.transform([processed_text])
+                probability = model.predict_proba(text_vectorized)[0][1]
+                prediction = "SCAM" if probability >= 0.6 else "NOT SCAM"
+                message = get_warning_message(probability)
+                results[speaker] = {"prediction": prediction, "confidence": round(probability, 2), "message": message}
+                if prediction == "SCAM":
+                    scam_confidences.append(probability)
+
+        final_confidence = round(sum(scam_confidences) / len(scam_confidences), 2) if scam_confidences else 0.0
+        final_prediction = "SCAM" if scam_confidences else "NOT SCAM"
 
         return jsonify({
-            "prediction": prediction,
-            "confidence": round(probability, 2),
-            "message": message
+            "final_prediction": final_prediction,
+            "final_confidence": final_confidence,
+            "speaker_details": results
         })
-    
+
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
