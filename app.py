@@ -8,7 +8,7 @@ from flask_cors import CORS
 
 
 app = Flask(__name__)
-CORS(app, origins=["http://127.0.0.1:5500","http://127.0.0.1:5000"])
+CORS(app, resources={r"/*": {"origins": "*"}})
 aai.settings.api_key = "afc345dcecac49d3b711cd1a9b59757e"
 
 # Load ML model and vectorizer
