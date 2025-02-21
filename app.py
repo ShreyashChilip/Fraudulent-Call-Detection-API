@@ -8,7 +8,7 @@ from flask_cors import CORS
 
 
 app = Flask(__name__)
-CORS(app, origins=["http://127.0.0.1:5500"])
+CORS(app, origins=["http://127.0.0.1:5500","http://127.0.0.1:5000"])
 aai.settings.api_key = "afc345dcecac49d3b711cd1a9b59757e"
 
 # Load ML model and vectorizer
@@ -78,6 +78,7 @@ def predict_audio():
         final_confidence = round(sum(scam_confidences) / len(scam_confidences), 2) if scam_confidences else 0.0
         final_prediction = "SCAM" if scam_confidences else "NOT SCAM"
 
+        print(speaker_text_strings)
 
         return jsonify({
             "final_prediction": final_prediction,
