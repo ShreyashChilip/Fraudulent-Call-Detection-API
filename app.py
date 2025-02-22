@@ -6,7 +6,6 @@ import assemblyai as aai
 from flask import Flask, request, jsonify
 from flask_cors import CORS
 
-
 app = Flask(__name__)
 CORS(app, resources={r"/*": {"origins": "*"}})
 aai.settings.api_key = "afc345dcecac49d3b711cd1a9b59757e"
@@ -65,26 +64,37 @@ def predict_audio():
         for speaker, text in speaker_text_strings.items():
             processed_text = preprocess_text(text)
             if not processed_text:
-                results[speaker] = {"prediction": "NOT SCAM", "confidence": 0.0, "message": "No valid text"}
+                results[speaker] = {
+                    "prediction": "NOT SCAM",
+                    "confidence": "0.00",
+                    "message": "No valid text"
+                }
             else:
                 text_vectorized = vectorizer.transform([processed_text])
                 probability = model.predict_proba(text_vectorized)[0][1]
                 prediction = "SCAM" if probability >= 0.60 else "NOT SCAM"
                 message = get_warning_message(probability)
-                results[speaker] = {"prediction": prediction, "confidence": round(probability, 2), "message": message}
+                results[speaker] = {
+                    "prediction": prediction,
+                    "confidence": f"{probability:.2f}",  # Convert to string with 2 decimal places
+                    "message": message
+                }
                 if prediction == "SCAM":
                     scam_confidences.append(probability)
 
-        final_confidence = round(sum(scam_confidences) / len(scam_confidences), 2) if scam_confidences else 0.0
+        final_confidence = sum(scam_confidences) / len(scam_confidences) if scam_confidences else 0.0
         final_prediction = "SCAM" if scam_confidences else "NOT SCAM"
 
-        print(speaker_text_strings)
-
-        return jsonify({
+        response_data = {
             "final_prediction": final_prediction,
-            "final_confidence": final_confidence,
+            "final_confidence": f"{final_confidence:.2f}",  # Convert to string with 2 decimal places
             "speaker_details": results
-        })
+        }
+
+        print(speaker_text_strings)  # For debugging
+        print(response_data)  # For debugging
+
+        return jsonify(response_data)
 
     except Exception as e:
         return jsonify({"error": str(e)}), 500
